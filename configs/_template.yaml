@@ -1,0 +1,9 @@
+# Template Configuration for a Gene Locus
+gene_symbol: "GENE_SYMBOL"
+canonical_transcript: "ENST00000000000"
+flank_bp: 100000
+promoter_window_bp: 2500
+clinvar_snapshot_date: null # Set to YYYYMMDD to pin
+vep_batch_size: 200
+vep_timeout_s: 30
+vep_max_retries: 3

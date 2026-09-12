@@ -1,0 +1,9 @@
+name: regvar-env
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - bcftools=1.19
+  - samtools=1.19
+  - tabix=1.11

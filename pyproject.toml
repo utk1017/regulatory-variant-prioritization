@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "regvar"
+version = "0.1.0"
+description = "A multimodal, provenance-aware evidence framework for prioritizing regulatory non-coding variants."
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "pysam>=0.22.0",
+    "pyranges>=0.0.129",
+    "requests>=2.31.0",
+    "pandas>=2.1.0",
+    "pyyaml>=6.0"
+]
+
+[project.scripts]
+regvar = "regvar.cli:main"
