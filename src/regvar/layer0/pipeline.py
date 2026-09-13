@@ -1,6 +1,8 @@
 import os
 import pandas as pd
 from regvar.common.config import load_config
+from regvar.common.schema import validate_layer0_output
+from regvar.common.provenance import write_manifest
 from regvar.layer0.gene_meta import fetch_gene_metadata
 from regvar.layer0.reference import download_reference
 from regvar.layer0.clinvar import (
@@ -55,9 +57,12 @@ def run_layer0(config_path):
     
     ref_fasta = download_reference(gene_meta["chrom"])
     
+    clinvar_date_was_pinned = clinvar_date is not None
     if not clinvar_date:
         clinvar_date = discover_latest_clinvar_date()
         print(f"Auto-discovered ClinVar date: {clinvar_date}")
+        print(f"ACTION: paste '{clinvar_date}' into configs/{gene_symbol.lower()}.yaml "
+              f"(clinvar_snapshot_date) for reproducible re-runs.")
         
     clinvar_full = download_clinvar_snapshot(clinvar_date)
     clinvar_region = extract_region(clinvar_full, region_str, "data/cache/clinvar_region.vcf.gz")
@@ -66,6 +71,13 @@ def run_layer0(config_path):
     variants_df = extract_clinvar_labels(clinvar_norm)
     if variants_df.empty:
         print("No variants found passing filters in this region.")
+        out_dir = os.path.join("data/outputs", gene_symbol)
+        write_manifest(
+            out_dir, gene_symbol=gene_symbol, gene_meta=gene_meta,
+            clinvar_snapshot_date=clinvar_date, clinvar_date_was_pinned=clinvar_date_was_pinned,
+            ref_fasta_path=ref_fasta, config_path=config_path,
+            n_variants_total=0, n_variants_regulatory=0,
+        )
         return variants_df
         
     ccre_df = fetch_ccres(gene_meta["chrom"], flank_start, flank_end)
@@ -90,11 +102,27 @@ def run_layer0(config_path):
     df_merged["is_regulatory"] = df_merged["regulatory_evidence"].str.len() > 0
     
     final_df = df_merged[df_merged["is_regulatory"]].drop_duplicates(subset=["chrom", "pos", "ref", "alt"]).reset_index(drop=True)
-    
-    out_dir = "data/outputs"
+
+    validate_layer0_output(final_df)
+
+    out_dir = os.path.join("data/outputs", gene_symbol)
     os.makedirs(out_dir, exist_ok=True)
-    out_path = os.path.join(out_dir, f"{gene_symbol}_layer0_regulatory_truthset.csv")
+    out_path = os.path.join(out_dir, "layer0_regulatory_truthset.csv")
     final_df.to_csv(out_path, index=False)
+
+    manifest_path = write_manifest(
+        out_dir,
+        gene_symbol=gene_symbol,
+        gene_meta=gene_meta,
+        clinvar_snapshot_date=clinvar_date,
+        clinvar_date_was_pinned=clinvar_date_was_pinned,
+        ref_fasta_path=ref_fasta,
+        config_path=config_path,
+        n_variants_total=len(df_merged),
+        n_variants_regulatory=len(final_df),
+    )
+
     print(f"Layer 0 complete. Saved {len(final_df)} regulatory variants to {out_path}")
+    print(f"Provenance manifest: {manifest_path}")
     
     return final_df

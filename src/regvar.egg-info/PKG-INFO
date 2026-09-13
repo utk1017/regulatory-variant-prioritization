@@ -1,3 +1,17 @@
+Metadata-Version: 2.4
+Name: regvar
+Version: 0.1.0
+Summary: A multimodal, provenance-aware evidence framework for prioritizing regulatory non-coding variants.
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+Requires-Dist: pysam>=0.22.0
+Requires-Dist: pyranges>=0.0.129
+Requires-Dist: requests>=2.31.0
+Requires-Dist: pandas>=2.1.0
+Requires-Dist: pyyaml>=6.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.4; extra == "dev"
+
 # Regulatory Variant Prioritization Framework
 
 A multimodal, provenance-aware evidence framework for prioritizing regulatory non-coding variants. 

@@ -35,12 +35,14 @@ def download_clinvar_snapshot(date_str, out_name="data/cache/clinvar_snapshot.vc
     return out_name
 
 def extract_region(vcf_gz, region_str, out_name):
+    os.makedirs(os.path.dirname(out_name) or ".", exist_ok=True)
     _run(f"bcftools view {vcf_gz} -r {region_str} -Oz -o {out_name}")
     _run(f"tabix -f -p vcf {out_name}")
     return out_name
 
 def normalize_vcf(input_vcf_gz, ref_fasta, out_name):
-    split_name = "data/cache/split_tmp.vcf.gz"
+    os.makedirs(os.path.dirname(out_name) or ".", exist_ok=True)
+    split_name = os.path.join(os.path.dirname(out_name) or ".", "split_tmp.vcf.gz")
     _run(f"bcftools norm -f {ref_fasta} -m -both {input_vcf_gz} -Oz -o {split_name}")
     _run(f"tabix -f -p vcf {split_name}")
     _run(f"bcftools norm -f {ref_fasta} -d exact {split_name} -Oz -o {out_name}")

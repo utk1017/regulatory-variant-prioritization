@@ -38,15 +38,21 @@ def vep_annotate_batch(variants_df, batch_size=200, timeout=30, max_retries=3):
                 attempt += 1
         time.sleep(1)
 
+    n_returned = len(results)
+    if n_returned < n_requested:
+        print(f"WARNING: requested {n_requested} variants, got {n_returned} VEP results "
+              f"({n_requested - n_returned} lost to failed/skipped batches)")
     return results
 
 def parse_vep_results(vep_results, canonical_transcript, target_gene_id):
     rows = []
+    n_missing_allele = 0
     for res in vep_results:
         pos = res.get("start")
         chrom = res.get("seq_region_name")
         allele = res.get("allele_string")
         if not allele or "/" not in allele:
+            n_missing_allele += 1
             continue
         ref, alt = allele.split("/")[:2]
 
@@ -69,4 +75,7 @@ def parse_vep_results(vep_results, canonical_transcript, target_gene_id):
             "vep_regulatory_terms": sorted(reg_terms),
         })
 
+    if n_missing_allele:
+        print(f"NOTE: {n_missing_allele} VEP results had no parseable allele_string and were "
+              f"dropped (these will not match any variant downstream)")
     return pd.DataFrame(rows)
