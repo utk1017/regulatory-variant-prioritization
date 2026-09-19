@@ -21,3 +21,13 @@ data/outputs/*
 # Testing
 .pytest_cache/
 .coverage
+
+# Build artifacts
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+
+# Jupyter
+.ipynb_checkpoints/

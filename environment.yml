@@ -8,3 +8,6 @@ dependencies:
   - bcftools=1.19
   - samtools=1.19
   - tabix=1.11
+  - pip
+  - pip:
+    - -e .[dev]
