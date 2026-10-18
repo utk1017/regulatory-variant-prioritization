@@ -3,6 +3,7 @@ import os
 import tempfile
 import pandas as pd
 import pytest
+import yaml
 
 from regvar.layer1.pipeline import run_layer1
 from regvar.layer1.schema import (
@@ -63,15 +64,17 @@ def test_run_layer1_end_to_end():
 
         # Create synthetic config
         cfg_path = os.path.join(tmpdir, "test_config.yaml")
+        config_data = {
+            "gene_symbol": "HBB",
+            "layer1": {
+                "layer0_csv_path": l0_csv,
+                "http_cache_dir": os.path.join(tmpdir, "cache"),
+                "use_http_cache": True,
+                "gnomad_request_delay_s": 0.0,
+            },
+        }
         with open(cfg_path, "w", encoding="utf-8") as fh:
-            fh.write(f"""
-gene_symbol: "HBB"
-layer1:
-  layer0_csv_path: "{l0_csv.replace('\\', '/')}"
-  http_cache_dir: "{os.path.join(tmpdir, 'cache').replace('\\', '/')}"
-  use_http_cache: true
-  gnomad_request_delay_s: 0.0
-""")
+            yaml.dump(config_data, fh)
 
         # Mock fetch returning clean responses
         def mock_fetch(method, url, params=None, json_body=None):
