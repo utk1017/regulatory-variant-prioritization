@@ -1,5 +1,4 @@
 import argparse
-from regvar.layer0.pipeline import run_layer0
 
 def main():
     parser = argparse.ArgumentParser(description="Regulatory Variant Prioritization Framework")
@@ -12,7 +11,12 @@ def main():
     if args.command == "run":
         if args.layer == 0:
             print(f"Running Layer 0 with config {args.config}...")
+            from regvar.layer0.pipeline import run_layer0
             run_layer0(args.config)
+        elif args.layer == 1:
+            print(f"Running Layer 1 with config {args.config}...")
+            from regvar.layer1.pipeline import run_layer1
+            run_layer1(args.config)
         else:
             print(f"Layer {args.layer} is not yet implemented.")
 

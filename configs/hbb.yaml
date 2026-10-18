@@ -7,3 +7,26 @@ clinvar_snapshot_date: null
 vep_batch_size: 200
 vep_timeout_s: 30
 vep_max_retries: 3
+
+# Layer 1 Configuration
+layer1:
+  use_http_cache: true
+  http_cache_dir: "data/cache/http"
+  cache_ttl_days: 7
+  refresh_cache: false
+  strict: false
+  gtex_dataset: "gtex_v8"
+  gtex_gencode_version: "v26"
+  gtex_tissues:
+    - "Whole_Blood"
+  gtex_items_per_page: 250
+  gtex_max_pages: 40
+  eqtl_testable_min_maf: 0.01
+  gwas_p_threshold: 5.0e-8
+  gwas_window_bp: 25000
+  gnomad_dataset: "gnomad_r4"
+  gnomad_window_bp: 25000
+  gnomad_request_delay_s: 6.0
+  mpra_evidence_path: null
+  crispr_evidence_path: null
+  sig_pvalue_threshold: 0.05

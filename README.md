@@ -6,7 +6,8 @@ This pipeline fuses GWAS, eQTL, MPRA, and CRISPR evidence with AlphaGenome-based
 
 ## 📊 Project Status
 - **Layer 0 (Variant Intake & Harmonization):** ✅ Finalized and tested. (Flags whether a variant sits in a regulatory region).
-- **Layers 1–7 (Experimental & Computational Integration):** 🚧 In progress.
+- **Layer 1 (Multi-Source Evidence Collection):** ✅ Finalized and tested. (Standardizes evidence from gnomAD, GWAS, GTEx, MPRA, and CRISPR).
+- **Layers 2–7 (Computational Completion & Bayesian Integration):** 🚧 In progress.
 
 For a detailed breakdown of the architecture, see [docs/framework_overview.md](docs/framework_overview.md).
 
@@ -41,7 +42,13 @@ Run Layer 0 for the `HBB` locus using the provided configuration:
 regvar run --layer 0 --config configs/hbb.yaml
 ```
 
-The pipeline outputs to `data/outputs/HBB/layer0_regulatory_truthset.csv`. Alongside the data, a `manifest.json` is generated to record exact data provenance (ClinVar snapshot date, reference build, git commit, and config used).
+Run Layer 1 to collect multimodal evidence:
+
+```bash
+regvar run --layer 1 --config configs/hbb.yaml
+```
+
+The pipeline outputs to `data/outputs/HBB/layer1_evidence.csv`. Alongside the data, a `manifest.json` is generated to record exact data provenance (ClinVar snapshot date, reference build, git commit, cache statistics, and config used).
 
 ## 🧪 Testing
 
