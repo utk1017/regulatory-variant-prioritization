@@ -28,7 +28,11 @@ from regvar.layer1.gnomad import (
     maf_from_gnomad,
 )
 from regvar.layer1.gtex import build_eqtl_records, collect_eqtl_evidence
-from regvar.layer1.gwas import build_gwas_records, collect_gwas_evidence
+from regvar.layer1.gwas import (
+    build_gwas_records,
+    collect_gwas_evidence,
+    collect_gwas_with_fallback,
+)
 from regvar.layer1.intake import load_layer0_output
 from regvar.layer1.local_tables import (
     CRISPR_COLUMNS,
@@ -62,6 +66,9 @@ DEFAULT_L1 = {
     "gtex_max_pages": 40,
     "eqtl_testable_min_maf": 0.01,
     "gwas_p_threshold": 5.0e-8,
+    "gwas_source": "auto",
+    "gwas_download_url": "https://ftp.ebi.ac.uk/pub/databases/gwas/releases/latest/gwas-catalog-associations_ontology-annotated-full.zip",
+    "gwas_download_ttl_days": 14,
     "gwas_window_bp": 25000,
     "gnomad_dataset": "gnomad_r4",
     "gnomad_window_bp": 25000,
@@ -93,6 +100,9 @@ def run_layer1(config_path: str, fetch: Optional[Any] = None) -> Optional[pd.Dat
     gene_symbol = config.get("gene_symbol", "HBB")
     user_l1 = config.get("layer1") or {}
     l1_cfg = {**DEFAULT_L1, **user_l1}
+    _mpra_default = "data/inputs/hbb_locus_mpra_evidence.csv"
+    if not l1_cfg.get("mpra_evidence_path") and os.path.exists(_mpra_default):
+        l1_cfg["mpra_evidence_path"] = _mpra_default
 
     print(f"Running Layer 1 evidence collection for {gene_symbol}...")
 
@@ -150,21 +160,20 @@ def run_layer1(config_path: str, fetch: Optional[Any] = None) -> Optional[pd.Dat
         f"{len(gnomad['by_key'])} variant(s) with genome AF"
     )
 
-    # 2. GWAS Catalog (Windowed)
+    # 2. GWAS Catalog (with auto fallback to bulk file)
     print("Collecting GWAS Catalog associations...")
     positions = sorted({v.pos for v in variants})
-    gwas = collect_gwas_evidence(
+    gwas_res = collect_gwas_with_fallback(
         chrom,
         positions,
         fetch=fetch,
-        window_bp=l1_cfg.get("gwas_window_bp", 25000),
+        L1=l1_cfg,
     )
-    failed_gwas_wins = [w for w in gwas["windows"] if w["error"]]
-    if failed_gwas_wins:
-        run_warnings.append(
-            f"GWAS: {len(failed_gwas_wins)} of {len(gwas['windows'])} window(s) failed query"
-        )
+    gwas = gwas_res["gwas"]
+    gwas_used = gwas_res.get("used", "api")
+    run_warnings.extend(gwas_res.get("warnings", []))
     print(
+        f"GWAS source used: {gwas_used}\n"
         f"GWAS: {gwas['n_snps_in_region']} catalog SNP(s) across {len(gwas['windows'])} window(s), "
         f"{len(gwas['by_pos'])} at candidate positions"
     )
@@ -260,7 +269,12 @@ def run_layer1(config_path: str, fetch: Optional[Any] = None) -> Optional[pd.Dat
                 },
             },
             "gnomad": {"dataset": l1_cfg["gnomad_dataset"], "windows": gnomad["windows"]},
-            "gwas": {"windows": gwas["windows"], "n_snps_in_span": gwas["n_snps_in_region"]},
+            "gwas": {
+                "source_used": gwas_used,
+                "file_info": gwas_res.get("file_info"),
+                "windows": gwas["windows"],
+                "n_snps_in_span": gwas["n_snps_in_region"],
+            },
             "mpra_evidence_path": l1_cfg["mpra_evidence_path"],
             "mpra_sha256": _file_hash(l1_cfg["mpra_evidence_path"]),
             "crispr_evidence_path": l1_cfg["crispr_evidence_path"],

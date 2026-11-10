@@ -54,3 +54,48 @@ def test_canonical_and_union_disagreement_is_visible():
         "This fixture is constructed to disagree -- if this assertion fails, "
         "the fixture itself is wrong, not the code"
     )
+
+
+def test_layer0_to_evidence_records_adapter():
+    """Layer 0 wide rows must be cleanly convertible to canonical EvidenceRecord objects."""
+    import pandas as pd
+    from regvar.common.schema import layer0_to_evidence_records, EvidenceRecord
+
+    wide_df = pd.DataFrame([{
+        "chrom": "11",
+        "pos": 5227172,
+        "ref": "G",
+        "alt": "A",
+        "label": "pathogenic",
+        "CLNSIG": "Pathogenic",
+        "CLNREVSTAT": "criteria_provided,_single_submitter",
+        "review_stars": 1,
+        "interval_evidence": ["dELS"],
+        "vep_canonical_terms": ["upstream_gene_variant"],
+        "vep_all_transcript_terms": ["5_prime_UTR_variant"],
+        "vep_regulatory_terms": ["5_prime_UTR_variant"],
+        "regulatory_evidence": ["interval:dELS", "vep:5_prime_UTR_variant"],
+        "is_regulatory": True,
+    }])
+
+    recs = layer0_to_evidence_records(wide_df, clinvar_version="2024-09")
+    assert len(recs) == 3
+    modalities = {r.modality: r for r in recs}
+    assert "clinvar" in modalities
+    assert "ccre_overlap" in modalities
+    assert "vep_consequence" in modalities
+
+    cv = modalities["clinvar"]
+    assert isinstance(cv, EvidenceRecord)
+    assert cv.source_type == "curated_clinical"
+    assert cv.dataset_id == "clinvar"
+    assert cv.dataset_version == "2024-09"
+    assert cv.missingness_flag == "observed_positive"
+
+    ccre = modalities["ccre_overlap"]
+    assert ccre.source_type == "computational"
+    assert ccre.dataset_id == "encode_ccre"
+
+    vep = modalities["vep_consequence"]
+    assert vep.source_type == "computational"
+    assert vep.dataset_id == "ensembl_vep"

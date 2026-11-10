@@ -17,6 +17,10 @@ def main():
             print(f"Running Layer 1 with config {args.config}...")
             from regvar.layer1.pipeline import run_layer1
             run_layer1(args.config)
+        elif args.layer == 2:
+            print(f"Running Layer 2 with config {args.config}...")
+            from regvar.layer2.pipeline import run_layer2
+            run_layer2(args.config)
         else:
             print(f"Layer {args.layer} is not yet implemented.")
 

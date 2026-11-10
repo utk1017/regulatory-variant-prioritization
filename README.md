@@ -7,7 +7,8 @@ This pipeline fuses GWAS, eQTL, MPRA, and CRISPR evidence with AlphaGenome-based
 ## 📊 Project Status
 - **Layer 0 (Variant Intake & Harmonization):** ✅ Finalized and tested. (Flags whether a variant sits in a regulatory region).
 - **Layer 1 (Multi-Source Evidence Collection):** ✅ Finalized and tested. (Standardizes evidence from gnomAD, GWAS, GTEx, MPRA, and CRISPR).
-- **Layers 2–7 (Computational Completion & Bayesian Integration):** 🚧 In progress.
+- **Layer 2 (Evidence Rules & Completability):** ✅ Finalized and tested. (Disambiguates gaps, compiles AlphaGenome trigger queue, isolates agreement benchmarks, and computes stratification tiers).
+- **Layers 3–7 (Computational Completion & Bayesian Integration):** 🚧 In progress.
 
 For a detailed breakdown of the architecture, see [docs/framework_overview.md](docs/framework_overview.md).
 
@@ -48,7 +49,17 @@ Run Layer 1 to collect multimodal evidence:
 regvar run --layer 1 --config configs/hbb.yaml
 ```
 
-The pipeline outputs to `data/outputs/HBB/layer1_evidence.csv`. Alongside the data, a `manifest.json` is generated to record exact data provenance (ClinVar snapshot date, reference build, git commit, cache statistics, and config used).
+Run Layer 2 to detect missingness gaps and compile AlphaGenome triggers:
+
+```bash
+regvar run --layer 2 --config configs/hbb.yaml
+```
+
+The pipeline outputs:
+- `data/outputs/HBB/layer2_modality_availability.csv`: Per-variant availability vector and evidence tiers (Tiers 1–3).
+- `data/outputs/HBB/layer2_alphagenome_triggers.csv`: Inference queue for missing completable modalities.
+- `data/outputs/HBB/layer2_agreement_checks.csv`: Observed experimental measurements isolated for model benchmarking.
+- `data/outputs/HBB/layer2_manifest.json`: Full provenance audit trail, trigger distributions, and pipeline warnings.
 
 ## 🧪 Testing
 

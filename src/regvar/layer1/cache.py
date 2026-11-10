@@ -141,34 +141,29 @@ class HTTPCache:
 # ---------------------------------------------------------------------------
 
 
-def make_fetch(cache: HTTPCache, timeout: int = 30, max_retries: int = 3, backoff: float = 2.0):
-    """Return a ``fetch(method, url, params, json_body)`` callable.
-
-    The returned callable returns ``(payload, error, from_cache)``:
-
-    - ``payload`` -- deserialized JSON body, or ``None`` on failure.
-    - ``error``   -- ``None`` on success; a short string code on failure
-      (e.g. ``"http_503"``, ``"invalid_json"``).
-    - ``from_cache`` -- ``True`` iff the response came from the disk cache;
-      callers that must rate-limit live API calls (e.g. gnomAD) should skip
-      their inter-request sleep when this is ``True``.
-    """
+def make_fetch(cache: HTTPCache, timeout=(5, 20), max_retries: int = 3, backoff: float = 1.5):
+    """Cached GET/POST client with one persistent session, separate connect/read timeouts,
+    bounded exponential backoff, and Retry-After support. Transient failures are never cached."""
+    session = requests.Session()
+    session.headers.update({"User-Agent": "HBB-regulatory-evidence-pipeline/1.0"})
+    retryable_status = {429, 500, 502, 503, 504}
 
     def fetch(method: str, url: str, params=None, json_body=None):
         # 1. Cache lookup
-        entry, hit = cache.get(method, url, params, json_body)
+        cached_entry, hit = cache.get(method, url, params, json_body)
         if hit:
-            return entry.get("data"), entry.get("error"), True
+            return cached_entry.get("data"), cached_entry.get("error"), True
 
         cache.misses += 1
         last_err = "unknown"
         for attempt in range(max_retries + 1):
+            retry_after = None
             try:
-                resp = requests.request(
+                resp = session.request(
                     method, url, params=params, json=json_body, timeout=timeout
                 )
             except requests.exceptions.RequestException as exc:
-                last_err = type(exc).__name__
+                last_err = f"{type(exc).__name__}: {exc}"
             else:
                 if resp.status_code == 200:
                     try:
@@ -180,12 +175,20 @@ def make_fetch(cache: HTTPCache, timeout: int = 30, max_retries: int = 3, backof
                 if resp.status_code == 404:
                     cache.put(method, url, params, json_body, None, "http_404")
                     return None, "http_404", False
-                if resp.status_code in (429, 500, 502, 503, 504):
+                # 410 Gone is normally permanent, but the GWAS Catalog has returned it transiently
+                # from a live endpoint, so retry it a bounded number of times before reporting it.
+                if resp.status_code in retryable_status or (resp.status_code == 410 and attempt < 2):
                     last_err = f"http_{resp.status_code}"
+                    retry_after = resp.headers.get("Retry-After")
                 else:
                     return None, f"http_{resp.status_code}", False
             if attempt < max_retries:
-                time.sleep(backoff**attempt)
+                try:
+                    delay = float(retry_after) if retry_after is not None else backoff ** attempt
+                except (TypeError, ValueError):
+                    delay = backoff ** attempt
+                time.sleep(min(max(delay, 0.0), 30.0))
         return None, last_err, False
 
+    fetch.session = session
     return fetch

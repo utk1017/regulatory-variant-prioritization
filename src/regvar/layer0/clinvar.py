@@ -1,7 +1,10 @@
 import os
 import re
 import requests
-import pysam
+try:
+    import pysam
+except ImportError:
+    pysam = None
 import pandas as pd
 from regvar.common.utils import _run
 
@@ -50,6 +53,8 @@ def normalize_vcf(input_vcf_gz, ref_fasta, out_name):
     return out_name
 
 def extract_clinvar_labels(vcf_path):
+    if pysam is None:
+        raise ImportError("pysam is required to extract ClinVar labels from a VCF file.")
     vf = pysam.VariantFile(vcf_path)
     rows = []
     for rec in vf:

@@ -6,7 +6,7 @@ from regvar.layer1.gtex import (
     fetch_tissue_eqtls,
     resolve_versioned_gencode_id,
 )
-from regvar.layer1.variants import canon_key, to_variants
+from regvar.layer1.variants import Variant, canon_key, to_variants
 
 
 def _variants(rows):
@@ -56,8 +56,11 @@ def test_gtex_testability_and_failed_tissue():
     # Pos 100: Hit in Whole_Blood
     assert by_pos_tissue[(100, "Whole_Blood")].missingness_flag == "observed_positive"
 
-    # Pos 200: Common variant (MAF 0.2 >= 0.01) -> observed_null
-    assert by_pos_tissue[(200, "Whole_Blood")].missingness_flag == "observed_null"
+    # Pos 200: Common non-hit (MAF 0.2 >= 0.01) -> absent / unverified (not tested-null)
+    assert by_pos_tissue[(200, "Whole_Blood")].missingness_flag == "absent"
+    pos200_val = json.loads(by_pos_tissue[(200, "Whole_Blood")].evidence_value)
+    assert pos200_val["reason"] == "no_significant_eqtl_association_returned_test_status_unverified"
+    assert pos200_val["test_status"] == "unverified"
 
     # Pos 300: Rare variant (MAF 0.0001 < 0.01) -> absent (not testable)
     assert by_pos_tissue[(300, "Whole_Blood")].missingness_flag == "absent"
@@ -68,6 +71,27 @@ def test_gtex_testability_and_failed_tissue():
 
     # All Liver queries failed -> absent
     assert all(r.missingness_flag == "absent" for r in recs if r.context == "Liver")
+
+
+def test_empty_gtex_result_for_common_variant_is_not_a_tested_null():
+    """An empty singleTissueEqtl query cannot establish a tested-negative result."""
+    v = Variant("11", 900, "A", "G", canon_key("11", 900, "A", "G"))
+    for gene_rows in (0, 3):
+        eqtl_fixture = {
+            "gencode_id": "ENSG00000244734.3",
+            "resolve_error": None,
+            "tissues": {
+                "Whole_Blood": {"error": None, "n_rows": gene_rows, "by_key": {}},
+            },
+        }
+        records = build_eqtl_records(
+            eqtl_fixture, [v], ["Whole_Blood"], {v.key: 0.12}, 0.01
+        )
+        assert len(records) == 1
+        assert records[0].missingness_flag == "absent"
+        payload = json.loads(records[0].evidence_value)
+        assert payload["reason"] == "no_significant_eqtl_association_returned_test_status_unverified"
+        assert payload["test_status"] == "unverified"
 
 
 def test_fetch_tissue_eqtls_pagination():

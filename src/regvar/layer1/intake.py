@@ -30,10 +30,12 @@ def find_layer0_inputs(
     """
     candidates = []
     if explicit_csv:
+        _d = os.path.dirname(explicit_csv) or "."
+        _cands = [os.path.join(_d, f"{gene_symbol}_layer0_manifest.json"), os.path.join(_d, "manifest.json")]
         candidates.append(
             (
                 explicit_csv,
-                os.path.join(os.path.dirname(explicit_csv), "manifest.json"),
+                next((m for m in _cands if os.path.exists(m)), _cands[-1]),
                 "config path",
             )
         )
@@ -47,7 +49,7 @@ def find_layer0_inputs(
     candidates.append(
         (
             f"layer0_outputs/{gene_symbol}_layer0_regulatory_truthset.csv",
-            None,
+            f"layer0_outputs/{gene_symbol}_layer0_manifest.json",
             "layer-0 notebook layout",
         )
     )

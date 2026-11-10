@@ -1,6 +1,9 @@
 import os
 import pandas as pd
-import pyranges as pr
+try:
+    import pyranges as pr
+except ImportError:
+    pr = None
 from regvar.common.utils import _run, to_ucsc_chrom, to_plain_chrom
 
 def fetch_bigbedtobed_tool():
@@ -32,6 +35,20 @@ def flag_interval_overlap(variants_df, reg_intervals_df):
 
     if reg_intervals_df.empty:
         variants_df["interval_evidence"] = [[] for _ in range(len(variants_df))]
+        return variants_df.drop(columns=["_row_id"])
+
+    if pr is None:
+        # Fallback without pyranges (pure pandas interval overlap)
+        evidence_list = []
+        for _, v in variants_df.iterrows():
+            chrom, pos = str(v["chrom"]).replace("chr", ""), int(v["pos"])
+            matches = reg_intervals_df[
+                (reg_intervals_df["Chromosome"].astype(str).str.replace("chr", "") == chrom)
+                & (reg_intervals_df["Start"] <= pos)
+                & (reg_intervals_df["End"] >= pos)
+            ]
+            evidence_list.append(matches["ccre_label"].tolist() if not matches.empty else [])
+        variants_df["interval_evidence"] = evidence_list
         return variants_df.drop(columns=["_row_id"])
 
     var_pr = pr.PyRanges(pd.DataFrame({

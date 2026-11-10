@@ -250,22 +250,39 @@ def build_eqtl_records(
                 )
                 continue
             maf = maf_by_key.get(v.key)
+            # GTEx's singleTissueEqtl endpoint returns significant associations, not a complete
+            # per-variant tested-null table. Therefore, absence of an exact candidate allele from
+            # the significant results cannot establish a tested negative, even if other gene rows
+            # exist. Only returned exact associations are observed_positive; non-hits stay absent
+            # with test status unverified (or not-testable when frequency is rare/unknown).
             if maf is not None and maf >= min_maf:
                 records.append(
                     make_record(
-                        v, "eqtl", "experimental", "observed_null",
+                        v,
+                        "eqtl",
+                        "experimental",
+                        "absent",
                         context=tissue,
-                        reason="common_variant_not_significant",
+                        reason="no_significant_eqtl_association_returned_test_status_unverified",
                         maf=maf,
+                        gtex_gene_rows=int(tinfo.get("n_rows", 0)),
+                        test_status="unverified",
+                        dataset_id="gtex",
+                        dataset_version="v8",
                     )
                 )
             else:
                 records.append(
                     make_record(
-                        v, "eqtl", "experimental", "absent",
+                        v,
+                        "eqtl",
+                        "experimental",
+                        "absent",
                         context=tissue,
                         reason="not_testable_rare_or_unknown_frequency",
                         maf=maf,
+                        dataset_id="gtex",
+                        dataset_version="v8",
                     )
                 )
     return records

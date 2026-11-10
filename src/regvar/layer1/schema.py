@@ -17,14 +17,17 @@ MODALITY_META tells downstream layers what they may do with each modality:
 from __future__ import annotations
 
 import json
-from dataclasses import asdict, dataclass
+from dataclasses import asdict
 from typing import Any, List, Optional
 
 import pandas as pd
 
+from regvar.common.schema import (
+    EvidenceRecord,
+    MISSINGNESS_FLAGS,
+    SOURCE_TYPES,
+)
 
-SOURCE_TYPES = ("experimental", "computational", "curated_clinical")
-MISSINGNESS_FLAGS = ("observed_positive", "observed_null", "absent")
 MODALITIES = ("gwas", "eqtl", "gnomad_af", "mpra", "crispr")
 
 MODALITY_META = {
@@ -64,6 +67,7 @@ LAYER1_COLUMNS = [
     "chrom", "pos", "ref", "alt",
     "modality", "source_type",
     "evidence_value", "context", "missingness_flag",
+    "dataset_id", "dataset_version",
 ]
 
 
@@ -93,51 +97,23 @@ def ev(**kw) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Record dataclass
-# ---------------------------------------------------------------------------
-
-
-@dataclass
-class EvidenceRecord:
-    """One (variant, modality) observation produced by Layer 1.
-
-    ``evidence_value`` must be compact JSON (always produced via :func:`ev`).
-    Non-positive rows carry a ``reason`` key inside ``evidence_value``.
-    """
-
-    chrom: str
-    pos: int
-    ref: str
-    alt: str
-    modality: str
-    source_type: str
-    evidence_value: str
-    context: Optional[str] = None
-    missingness_flag: str = "observed_positive"
-
-    def __post_init__(self) -> None:
-        if self.modality not in MODALITIES:
-            raise ValueError(
-                f"modality must be one of {MODALITIES}, got {self.modality!r}"
-            )
-        if self.source_type not in SOURCE_TYPES:
-            raise ValueError(
-                f"source_type must be one of {SOURCE_TYPES}, got {self.source_type!r}"
-            )
-        if self.missingness_flag not in MISSINGNESS_FLAGS:
-            raise ValueError(
-                f"missingness_flag must be one of {MISSINGNESS_FLAGS}, "
-                f"got {self.missingness_flag!r}"
-            )
-
-
-# ---------------------------------------------------------------------------
 # Factory
 # ---------------------------------------------------------------------------
 
 
-def make_record(variant, modality, source_type, flag, context=None, **value) -> EvidenceRecord:
+def make_record(
+    variant,
+    modality: str,
+    source_type: str,
+    flag: str,
+    context: Optional[str] = None,
+    dataset_id: Optional[str] = None,
+    dataset_version: Optional[str] = None,
+    **value,
+) -> EvidenceRecord:
     """Construct an :class:`EvidenceRecord` from a :class:`~regvar.layer1.variants.Variant`."""
+    if modality not in MODALITIES:
+        raise ValueError(f"modality must be one of {MODALITIES}, got {modality!r}")
     return EvidenceRecord(
         chrom=variant.chrom,
         pos=variant.pos,
@@ -148,6 +124,8 @@ def make_record(variant, modality, source_type, flag, context=None, **value) -> 
         evidence_value=ev(**value),
         context=context,
         missingness_flag=flag,
+        dataset_id=dataset_id,
+        dataset_version=dataset_version,
     )
 
 
